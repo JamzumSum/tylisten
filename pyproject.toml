@@ -1,0 +1,59 @@
+[tool.poetry]
+name = "tylisten"
+version = "0.4.1"
+description = "A fully typed async emitter-listener library."
+authors = ["JamzumSum <zzzzss990315@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/JamzumSum/tylisten"
+repository = "https://github.com/JamzumSum/tylisten"
+documentation = "https://github.com/JamzumSum/tylisten"
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/JamzumSum/tylisten/issues"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+# dependency groups
+[tool.poetry.group.test]
+optional = false
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "~0.21.0"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "*"
+black = "*"
+isort = "*"
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+# customize begin
+[tool.pytest.ini_options]
+pythonpath = 'src'
+log_cli = 1
+log_cli_level = 'WARNING'
+
+[tool.isort]
+profile = "black"
+line_length = 99
+
+[tool.black]
+line-length = 99
+target-version = ['py38']
+
+[tool.pyright]
+pythonVersion = "3.8"
+pythonPlatform = "All"
