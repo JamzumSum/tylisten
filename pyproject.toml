@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tylisten"
-version = "0.4.1"
+version = "0.4.2"
 description = "A fully typed async emitter-listener library."
 authors = ["JamzumSum <zzzzss990315@gmail.com>"]
 license = "MIT"

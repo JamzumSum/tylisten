@@ -88,7 +88,7 @@ class TestVirtualEmitter:
         assert vemitter.listeners is None
         assert await vemitter.wait() is None
 
-        async def boom(*_):
+        def boom(*_):
             raise RuntimeError
 
         pool = []
