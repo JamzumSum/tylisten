@@ -1,25 +1,16 @@
 import asyncio
+import logging
 from collections import deque
-from contextlib import suppress
 from inspect import isawaitable
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Deque,
-    Generic,
-    List,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, Awaitable, Callable, Deque, Generic, List, Optional, Type, TypeVar, Union
 from weakref import ref
 
 from .message import BaseMessage
 
 _M = TypeVar("_M", bound=BaseMessage)
 TyListener = Callable[[_M], Union[Awaitable[Any], Any]]
+
+log = logging.getLogger(__name__)
 
 
 def discard(q: Deque, v):
@@ -54,6 +45,7 @@ class Emitter(Generic[_M]):
             try:
                 c = listener(inst_msg)
             except:
+                log.error("sync listener error!", exc_info=True)
                 continue
             if isawaitable(c):
                 clist.append(c)
@@ -64,7 +56,7 @@ class Emitter(Generic[_M]):
             except asyncio.CancelledError:
                 raise
             except:
-                pass
+                log.error("async listener error!", exc_info=True)
 
         for fut in self._waiters:
             if not fut.done():
@@ -90,8 +82,10 @@ class VirtualEmitter(Generic[_M]):
     def connect(self, connect_emitter: Emitter[_M]):
         self._conn_point = ref(connect_emitter)  # type: ref[Emitter[_M]]
         for listener in self.connect_listeners:
-            with suppress(BaseException):
+            try:
                 listener(self, connect_emitter)
+            except:
+                log.error("sync connect_listener error!", exc_info=True)
 
     @property
     def connected(self):

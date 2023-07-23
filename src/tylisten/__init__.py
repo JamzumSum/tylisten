@@ -1,7 +1,8 @@
 """A fully typed async emitter-listener library."""
+from typing import Any
+
 from .emitter import Emitter, VirtualEmitter
 from .message import BaseMessage
-from typing import Any
 
 __all__ = ["BaseMessage", "Emitter", "VirtualEmitter", "null_emitter"]
 
