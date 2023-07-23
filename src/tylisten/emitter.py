@@ -48,7 +48,7 @@ class Emitter(Generic[_M]):
                 log.error("sync listener error!", exc_info=True)
                 continue
             if isawaitable(c):
-                clist.append(c)
+                clist.append(asyncio.ensure_future(c))
 
         if clist:
             try:
