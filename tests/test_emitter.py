@@ -83,37 +83,44 @@ class TestEmitter:
 
 class TestVirtualEmitter:
     async def test_connect(self):
-        vemitter: VirtualEmitter[test_message] = VirtualEmitter()
+        vemitter = VirtualEmitter(test_message)
         assert not vemitter.connected
-        assert vemitter.listeners is None
+        assert not vemitter.listeners
         assert await vemitter.wait() is None
 
         def boom(*_):
             raise RuntimeError
 
         pool = []
-        source = Emitter(test_message)
+        source1 = Emitter(test_message)
+        source2 = Emitter(test_message)
 
         vemitter.connect_listeners.append(boom)
         vemitter.connect_listeners.append(lambda v, e: pool.append(id(v)) or pool.append(id(e)))
-        vemitter.connect(source)
+        vemitter.connect(source1)
+        vemitter.connect(source2)
+
+        assert source1.listeners
+        assert source2.listeners
 
         assert vemitter.connected
-        assert vemitter._conn_point() is source
-        assert vemitter.listeners is source.listeners
+        assert source1 in vemitter.connected
         assert id(vemitter) in pool
-        assert id(source) in pool
+        assert id(source1) in pool
 
     async def test_wait(self):
         loop = asyncio.get_event_loop()
-        vemitter: VirtualEmitter[test_message] = VirtualEmitter()
-        source = Emitter(test_message)
+        vemitter = VirtualEmitter(test_message)
+        source1 = Emitter(test_message)
+        source2 = Emitter(test_message)
         assert await vemitter.wait() is None
-        vemitter.connect(source)
+
+        vemitter.connect(source1)
+        vemitter.connect(source2)
 
         async def emit():
             await asyncio.sleep(0.4)
-            await source.emit(a=1)
+            await source1.emit(a=1)
 
         async def wait():
             msg = await vemitter.wait()
@@ -121,4 +128,38 @@ class TestVirtualEmitter:
             assert isinstance(msg, test_message)
 
         start = loop.time()
+        await asyncio.gather(emit(), wait())
+
+    async def test_listeners(self):
+        pool = []
+
+        vemitter = VirtualEmitter(test_message)
+        source1 = Emitter(test_message)
+        source2 = Emitter(test_message)
+        vemitter.connect(source1)
+        vemitter.connect(source2)
+
+        # fmt: off
+        async def aboom(_): raise RuntimeError
+        async def boom(_): raise RuntimeError
+        # fmt: on
+
+        async def listener(msg: test_message):
+            assert isinstance(msg, test_message)
+            pool.append("async")
+
+        vemitter.listeners.append(aboom)
+        vemitter.listeners.append(boom)
+        vemitter.listeners.append(listener)
+        vemitter.listeners.append(lambda _: pool.append("sync"))
+
+        async def emit():
+            await source2.emit(a=1)
+
+        async def wait():
+            msg = await vemitter.wait()
+            assert "sync" in pool
+            assert "async" in pool
+            assert isinstance(msg, test_message)
+
         await asyncio.gather(emit(), wait())

@@ -12,5 +12,5 @@ class __null_message(BaseMessage):
         super().__init__()
 
 
-null_emitter: Emitter[Any] = Emitter(__null_message)
+null_emitter: Emitter[Any, Any] = Emitter(__null_message)
 null_vemitter: VirtualEmitter[Any] = VirtualEmitter()
