@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tylisten"
-version = "0.4.2"
+version = "0.5.0"
 description = "A fully typed async emitter-listener library."
 authors = ["JamzumSum <zzzzss990315@gmail.com>"]
 license = "MIT"
@@ -14,6 +14,7 @@ documentation = "https://github.com/JamzumSum/tylisten"
 
 [tool.poetry.dependencies]
 python = "^3.8"
+typing_extensions = ">=4.6.0"
 
 # dependency groups
 [tool.poetry.group.test]

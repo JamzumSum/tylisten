@@ -18,6 +18,8 @@ Core componets:
     * `listener`
 * `tylisten.VirtualEmitter`
     * `connect`
+    * `wait`
+    * `listener`
 * `tylisten.BaseMessage`
 * _(HelperClass)_ `tylisten.futstore.FutureStore`
     * `add_awaitable`
