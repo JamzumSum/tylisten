@@ -43,13 +43,16 @@ async def call_listeners(listeners: Iterable[TyListener[_M]], msg: _M):
             continue
         if isawaitable(c):
             clist.append(asyncio.ensure_future(c))
-    if clist:
-        try:
-            await asyncio.wait(clist)
-        except asyncio.CancelledError:
-            raise
-        except:
-            log.error("async listener error!", exc_info=True)
+
+    if not clist:
+        return
+
+    try:
+        await asyncio.wait(clist)
+    except asyncio.CancelledError:
+        raise
+    except:
+        log.error("async listener error!", exc_info=True)
 
 
 class Emitter(Generic[_M, _P]):
@@ -113,5 +116,8 @@ class VirtualEmitter(Generic[_M]):
             return
 
         all_wait = [asyncio.create_task(i.wait()) for i in self.connected]
+        if not all_wait:
+            return
+
         done, _ = await asyncio.wait(all_wait, return_when="FIRST_COMPLETED")
         return next(iter(done)).result()
