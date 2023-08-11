@@ -1,5 +1,5 @@
 import asyncio
-from typing import Awaitable, Set, Type, TypeVar, Union
+from typing import Awaitable, Set, TypeVar
 
 T = TypeVar("T")
 
@@ -40,6 +40,8 @@ class FutureStore:
 
         .. note:: Even if `wait_new` is False, newly added tasks may still be scheduled.
         """
+        if not self._futs:
+            return
         await asyncio.wait(self._futs)
         if wait_new and self._futs:
             # await potential new tasks in this store
