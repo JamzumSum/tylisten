@@ -14,7 +14,7 @@ from typing import (
     Union,
 )
 
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec, Self
 
 _T = TypeVar("_T")
 _P = ParamSpec("_P")
@@ -48,14 +48,23 @@ async def call_impls(
 class HookSpec(Generic[_P, _T]):
     """Define a hook. The wrapped function will be the original defination."""
 
+    __slots__ = ("impls", "__def__")
+
     impls: List[TyImpl[_P, _T]]
     """You can access this list to add/remove/clear_all implements."""
 
     def __init__(self, defination: TyImpl[_P, _T]) -> None:
         self.__def__ = defination
-        self.impls = []
-        self.add_impl = self.impls.append
+
+    def new(self):
+        o = HookSpec(self.__def__)
+        o.impls = []
+        return o
+
+    def add_impl(self, impl: TyImpl[_P, _T]) -> Self:
         """A shortcut to `.impls.append`."""
+        self.impls.append(impl)
+        return self
 
     async def results(self, *args: _P.args, **kwds: _P.kwargs) -> List[_T]:
         """Get all results, according to the order in `.impls`."""

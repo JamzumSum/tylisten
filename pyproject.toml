@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tylisten"
-version = "1.0.0"
+version = "1.1.0"
 description = "A fully typed async hook library."
 authors = ["JamzumSum <zzzzss990315@gmail.com>"]
 license = "MIT"
