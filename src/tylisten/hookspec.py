@@ -56,7 +56,7 @@ class HookSpec(Generic[_P, _T]):
     def __init__(self, defination: TyImpl[_P, _T]) -> None:
         self.__def__ = defination
 
-    def new(self):
+    def new(self) -> Self:
         o = HookSpec(self.__def__)
         o.impls = []
         return o
@@ -69,6 +69,10 @@ class HookSpec(Generic[_P, _T]):
     async def results(self, *args: _P.args, **kwds: _P.kwargs) -> List[_T]:
         """Get all results, according to the order in `.impls`."""
         return [i async for i in call_impls(self.impls, *args, **kwds)]
+
+    async def emit(self, *args: _P.args, **kwds: _P.kwargs) -> None:
+        """Like `.results`, but returns None."""
+        await self.results(*args, **kwds)
 
     async def first(self, *args: _P.args, **kwds: _P.kwargs) -> _T:
         """Get the first valid result from `.results`. If no results is valid, raise `StopAsyncIteration`."""
