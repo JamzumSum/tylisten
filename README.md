@@ -1,6 +1,6 @@
 # tylisten
 
-A tiny message emit/listen library with full type-hinting.
+A tiny hook framework with full type-hinting.
 
 ## Feature
 
@@ -12,16 +12,11 @@ A tiny message emit/listen library with full type-hinting.
 
 Core componets:
 
-* `tylisten.Emitter`
-    * `emit`
-    * `wait`
-    * `listener`
-* `tylisten.VirtualEmitter`
-    * `connect`
-    * `wait`
-    * `listener`
-* `tylisten.BaseMessage`
-* _(HelperClass)_ `tylisten.futstore.FutureStore`
+* `tylisten.HookSpec` (alias: `hookdef`)
+    * `results`
+    * `first`
+    * `__call__`
+* _(HelperClass)_ `tylisten.FutureStore`
     * `add_awaitable`
     * `wait`
 

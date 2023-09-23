@@ -1,16 +1,10 @@
 """A fully typed async emitter-listener library."""
 from typing import Any
 
-from .emitter import Emitter, VirtualEmitter
-from .message import BaseMessage
+from .futstore import FutureStore
+from .hookspec import HookSpec
 
-__all__ = ["BaseMessage", "Emitter", "VirtualEmitter", "null_emitter"]
+__all__ = ["HookSpec", "hookdef", "null_emitter", "FutureStore"]
 
-
-class __null_message(BaseMessage):
-    def __init__(self, *args, **kwds) -> None:
-        super().__init__()
-
-
-null_emitter: Emitter[Any, Any] = Emitter(__null_message)
-null_vemitter: VirtualEmitter[Any] = VirtualEmitter()
+hookdef = HookSpec
+null_emitter: HookSpec[Any, Any] = HookSpec(lambda *args, **kwds: None)

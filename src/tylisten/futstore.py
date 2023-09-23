@@ -4,11 +4,6 @@ from typing import Awaitable, Set, TypeVar
 T = TypeVar("T")
 
 
-def finished(fut: asyncio.Future):
-    """Test if a future is finished."""
-    return fut.done() or fut.cancelled()
-
-
 class FutureStore:
     """A store that saves running future"""
 
@@ -28,10 +23,12 @@ class FutureStore:
         :param func: the awaitable
         :return: the wrapped task
         """
-        if not finished(func := asyncio.ensure_future(func)):
+        if not (func := asyncio.ensure_future(func)).done():
             self._futs.add(func)
             func.add_done_callback(self._futs.discard)
         return func
+
+    __call__ = add_awaitable
 
     async def wait(self, wait_new=True):
         """Wait for all tasks in the specific group(s).
@@ -55,3 +52,6 @@ class FutureStore:
         """
         for t in self._futs:
             t.cancel()
+
+    def __bool__(self):
+        return bool(self._futs)

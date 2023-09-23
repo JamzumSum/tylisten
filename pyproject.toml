@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "tylisten"
-version = "0.5.1"
-description = "A fully typed async emitter-listener library."
+version = "1.0.0"
+description = "A fully typed async hook library."
 authors = ["JamzumSum <zzzzss990315@gmail.com>"]
 license = "MIT"
 readme = "README.md"
@@ -21,7 +21,7 @@ typing_extensions = ">=4.6.0"
 optional = false
 
 [tool.poetry.group.test.dependencies]
-pytest = "^7.4.0"
+pytest = "^7.4.1"
 pytest-asyncio = "~0.21.0"
 
 [tool.poetry.group.dev]
