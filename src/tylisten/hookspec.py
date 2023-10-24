@@ -80,7 +80,7 @@ class HookSpec(Generic[_P, _T]):
             return i
         raise StopAsyncIteration
 
-    async def __call__(self, *args: _P.args, **kwds: _P.kwargs) -> Optional[_T]:
+    async def __call__(self, *args: _P.args, **kwds: _P.kwargs) -> _T:
         """Get the first valid result from `.results`. If no results is valid, return result from the defination."""
         try:
             return await self.first(*args, **kwds)
