@@ -58,7 +58,7 @@ SOFTWARE.
 
 
 [home]: https://github.com/JamzumSum/tylisten "A tiny hook specification library with typing support."
-[pypi]: https://pypi.org/project/aioqzone "A tiny hook specification library with typing support."
+[pypi]: https://pypi.org/project/tylisten "A tiny hook specification library with typing support."
 [aioqzone]: https://github.com/aioqzone/aioqzone "A python wrapper for Qzone web login and Qzone http api."
 [Qzone2TG]: https://github.com/aioqzone/Qzone2TG "Forward Qzone Feeds to Telegram."
 [doc]: https://jamzumsum.github.io/tylisten "tylisten documentation"
