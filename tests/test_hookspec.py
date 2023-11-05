@@ -23,7 +23,7 @@ def hook():
 
 
 class TestHookSpec:
-    async def test_results(self, hook):
+    async def test_results(self, hook: test_message.TyInst):
         assert not hook.has_impl
 
         async def async_add(a: int):
@@ -39,7 +39,7 @@ class TestHookSpec:
         o = await hook.results(4)
         assert o == [3, 5, 6]
 
-    async def test_first(self, hook):
+    async def test_first(self, hook: test_message.TyInst):
         assert not hook.has_impl
 
         async def async_add(a: int):
@@ -54,7 +54,7 @@ class TestHookSpec:
         assert hook.has_impl
         assert 6 == await hook.first(4)
 
-    async def test_call(self, hook):
+    async def test_call(self, hook: test_message.TyInst):
         assert not hook.has_impl
 
         hook.add_impl(boom)

@@ -50,6 +50,11 @@ class StaticHookSpec(t.Generic[_P, _T]):
 
     __call__ = instantiate
 
+    @property
+    def TyInst(self) -> "t.Type[HookSpec[_P, _T]]":
+        """Designed for type checkers. Used to annotate the type of the instantiated hook."""
+        return HookSpec
+
 
 class HookSpec(t.Generic[_P, _T]):
     """An instance of a :class:`StaticHookSpec`."""
