@@ -1,23 +1,22 @@
 import asyncio
-from typing import Awaitable, Set, TypeVar
+import typing as t
 
-T = TypeVar("T")
+T = t.TypeVar("T")
 
 
 class FutureStore:
-    """A store that saves running future"""
+    """
+    A store for keeping references of running futures,
+    in order to keep them from being garbage collected.
+    """
 
-    _futs: Set[asyncio.Future]
+    _futs: t.Set[asyncio.Future]
 
     def __init__(self) -> None:
         super().__init__()
         self._futs = set()
 
-    def add_awaitable(
-        self,
-        func,
-    ):
-        # type: (Awaitable[T]) -> asyncio.Future[T]
+    def add_awaitable(self, func: t.Awaitable[T]) -> "asyncio.Future[T]":
         """Add an awaitable into this store.
 
         :param func: the awaitable

@@ -19,7 +19,7 @@ async def boom(a): raise RuntimeError
 
 @pytest.fixture
 def hook():
-    return test_message.new()
+    return test_message()
 
 
 class TestHookSpec:

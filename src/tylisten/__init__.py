@@ -1,10 +1,17 @@
-"""A fully typed async emitter-listener library."""
+"""A tiny hook specification library with typing support."""
+
 from typing import Any
 
 from .futstore import FutureStore
-from .hookspec import HookSpec
+from .hookspec import HookSpec, StaticHookSpec
 
-__all__ = ["HookSpec", "hookdef", "null_emitter", "FutureStore"]
+__all__ = [
+    "StaticHookSpec",
+    "HookSpec",
+    "hookdef",
+    "null_emitter",
+    "FutureStore",
+]
 
-hookdef = HookSpec
-null_emitter: HookSpec[Any, Any] = HookSpec(lambda *args, **kwds: None)
+hookdef = StaticHookSpec
+null_emitter: HookSpec[Any, Any] = StaticHookSpec(lambda *args, **kwds: None).instantiate()

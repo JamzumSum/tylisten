@@ -1,32 +1,23 @@
 import asyncio
 import logging
+import typing as t
 from inspect import isawaitable
-from typing import (
-    Any,
-    AsyncGenerator,
-    Awaitable,
-    Callable,
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    TypeVar,
-    Union,
-)
 
 from typing_extensions import ParamSpec, Self
 
-_T = TypeVar("_T")
+_T = t.TypeVar("_T")
 _P = ParamSpec("_P")
-TyImpl = Callable[_P, Union[Awaitable[_T], _T]]
+TyImpl = t.Callable[_P, t.Union[t.Awaitable[_T], _T]]
 
 log = logging.getLogger(__name__)
 
 
 async def call_impls(
-    listeners: Iterable[TyImpl[_P, _T]], *args: _P.args, **kwds: _P.kwargs
-) -> AsyncGenerator[_T, Any]:
-    for listener in listeners:
+    impls: t.Iterable[TyImpl[_P, _T]], *args: _P.args, **kwds: _P.kwargs
+) -> t.AsyncGenerator[_T, t.Any]:
+    """A uniform interface to call a batch of hook implements."""
+
+    for listener in impls:
         try:
             c = listener(*args, **kwds)
         except:
@@ -45,43 +36,61 @@ async def call_impls(
         yield c  # type: ignore
 
 
-class HookSpec(Generic[_P, _T]):
+class StaticHookSpec(t.Generic[_P, _T]):
     """Define a hook. The wrapped function will be the original defination."""
 
-    __slots__ = ("impls", "__def__")
-
-    impls: List[TyImpl[_P, _T]]
-    """You can access this list to add/remove/clear_all implements."""
+    __slots__ = ("__def__",)
 
     def __init__(self, defination: TyImpl[_P, _T]) -> None:
         self.__def__ = defination
 
-    def new(self) -> Self:
-        o = HookSpec(self.__def__)
-        o.impls = []
-        return o
+    def instantiate(self) -> "HookSpec[_P, _T]":
+        """Get a :class:`HookSpec` of this hook."""
+        return HookSpec(self)
+
+    __call__ = instantiate
+
+
+class HookSpec(t.Generic[_P, _T]):
+    """An instance of a :class:`StaticHookSpec`."""
+
+    __slots__ = ("__def__", "impls")
+
+    impls: t.List[TyImpl[_P, _T]]
+    """You can access this list to add/remove/clear_all implements."""
+
+    def __init__(self, hookdef: StaticHookSpec[_P, _T]) -> None:
+        super().__init__()
+        self.impls = []
+        self.__def__ = hookdef.__def__
 
     def add_impl(self, impl: TyImpl[_P, _T]) -> Self:
         """A shortcut to `.impls.append`."""
         self.impls.append(impl)
         return self
 
-    async def results(self, *args: _P.args, **kwds: _P.kwargs) -> List[_T]:
-        """Get all results, according to the order in `.impls`."""
+    async def gather(self, *args: _P.args, **kwds: _P.kwargs) -> t.List[_T]:
+        """Gather all results, results respsect the corresponding order in `.impls`."""
         return [i async for i in call_impls(self.impls, *args, **kwds)]
 
+    results = gather
+    """An alias to :meth:`.gather`."""
+
     async def emit(self, *args: _P.args, **kwds: _P.kwargs) -> None:
-        """Like `.results`, but returns None."""
-        await self.results(*args, **kwds)
+        """Like `.gather`, but returns `None`."""
+        await self.gather(*args, **kwds)
 
     async def first(self, *args: _P.args, **kwds: _P.kwargs) -> _T:
-        """Get the first valid result from `.results`. If no results is valid, raise `StopAsyncIteration`."""
+        """Get the first valid result. If all results are invalid, raise `StopAsyncIteration`."""
         async for i in call_impls(self.impls, *args, **kwds):
             return i
         raise StopAsyncIteration
 
     async def __call__(self, *args: _P.args, **kwds: _P.kwargs) -> _T:
-        """Get the first valid result from `.results`. If no results is valid, return result from the defination."""
+        """
+        Get the first valid result.
+        If all results are invalid, call the defination and return its result.
+        """
         try:
             return await self.first(*args, **kwds)
         except StopAsyncIteration:
