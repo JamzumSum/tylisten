@@ -1,24 +1,34 @@
 # tylisten
 
-A tiny hook framework with full type-hinting.
+A tiny hook specification library with typing support.
+
+[![python](https://img.shields.io/pypi/pyversions/tylisten?logo=python&logoColor=white)][home]
+[![version](https://img.shields.io/pypi/v/tylisten?logo=python)][pypi]
+[![style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+This library is the hook framework used by [aioqzone][aioqzone] and [Qzone2TG][Qzone2TG].
 
 ## Feature
 
 - [x] Tiny & Easy to use
-- [x] Type hinting
+- [x] **Fully** typing support
 - [x] **Zero** dependencies!
 
-## Usage
+# Documentation
 
-Core componets:
+Since version 2.0.0, we've built [documents][doc] with _Sphinx_.
 
-* `tylisten.HookSpec` (alias: `hookdef`)
-    * `results`
-    * `first`
-    * `__call__`
-* _(HelperClass)_ `tylisten.FutureStore`
-    * `add_awaitable`
-    * `wait`
+## Examples
+
+For hook specifications, see:
+
+- [qqqr.message](https://github.com/aioqzone/aioqzone/blob/beta/src/qqqr/message.py)
+- [aioqzone.message](https://github.com/aioqzone/aioqzone/blob/beta/src/aioqzone/message.py)
+
+For hook implementations, see:
+
+- [qzone3tg.app.base._hook][Qzone2TG]
+- [qzone3tg.app.interact._hook][Qzone2TG]
 
 ## License
 
@@ -45,3 +55,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+
+[home]: https://github.com/JamzumSum/tylisten "A tiny hook specification library with typing support."
+[pypi]: https://pypi.org/project/aioqzone "A tiny hook specification library with typing support."
+[aioqzone]: https://github.com/aioqzone/aioqzone "A python wrapper for Qzone web login and Qzone http api."
+[Qzone2TG]: https://github.com/aioqzone/Qzone2TG "Forward Qzone Feeds to Telegram."
+[doc]: https://jamzumsum.github.io/tylisten "tylisten documentation"
