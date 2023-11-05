@@ -1,19 +1,15 @@
-name: Release and Upload to aioqzone-index
+name: Publish to PyPI
 
 on:
+  workflow_dispatch:
   pull_request:
-    types:
-      - review_requested
-    branches:
-      - "beta"
-      - "beta/**"
-  pull_request_target:
     types:
       - closed
     branches:
+      - "release"
+      - "release/**"
       - "beta"
       - "beta/**"
-  workflow_dispatch:
 
 concurrency:
   group: build-${{ github.ref_name }}
@@ -39,29 +35,10 @@ jobs:
           python-version: "3.12"
           # cache: poetry
 
-      - name: Build dist
-        id: build
-        run: |
-          version=$(poetry version -s)
-          echo "version=$version" >> $GITHUB_ENV
-
-          poetry build
-
-      - name: Upload to Release
-        if: github.event_name != 'pull_request'
-        id: upload
-        uses: JamzumSum/actions/hash-release@master
-        with:
-          tag: ${{ env.version }}
-          notes: ${{ github.event.pull_request.body || '' }}
-          files: dist/*
-
-      - name: Add to aioqzone-index
-        if: github.event_name != 'pull_request'
+      #----------------------------------------------
+      #  --------    Build and release   ---------
+      #----------------------------------------------
+      - name: Build dist and Publish to PyPI
         env:
-          urls: ${{ steps.upload.outputs.urls }}
-          GH_TOKEN: ${{ secrets.REPO_TOKEN }} # this is a fine-grained PAT
-        run: |
-          gh workflow -R ${{ env.index-repo }} run add.yml \
-                      -f project=tylisten \
-                      -f urls="$urls"
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+        run: poetry publish --build
