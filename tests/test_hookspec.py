@@ -97,7 +97,7 @@ class TestHookSpec:
         assert "A test hook defination." in test_message.__doc__
 
 
-async def test_timeout(timeout: test_message.TyInst):
+async def test_timeout(timeout: test_message.TyTmInst):
     assert not timeout.has_impl
 
     async def sleep(a: int):
@@ -110,8 +110,6 @@ async def test_timeout(timeout: test_message.TyInst):
     with pytest.raises(asyncio.TimeoutError):
         await timeout.gather(1)
 
-    with pytest.raises(asyncio.TimeoutError):
-        await timeout.emit(1)
-
     assert 1 == await timeout.first(1)
     assert 1 == await timeout(1)
+    await timeout.emit_suppress_timeout(1)
