@@ -3,11 +3,12 @@
 from typing import Any
 
 from .futstore import FutureStore
-from .hookspec import HookSpec, StaticHookSpec
+from .hookspec import *
 
 __all__ = [
     "StaticHookSpec",
     "HookSpec",
+    "TimeoutHookSpec",
     "hookdef",
     "null_emitter",
     "FutureStore",
