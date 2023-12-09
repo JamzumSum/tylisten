@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import logging
 import typing as t
@@ -21,7 +19,7 @@ async def call_impls(
     impls: t.Iterable[TyImpl[_P, _T]], *args: _P.args, **kwds: _P.kwargs
 ) -> t.AsyncGenerator[_T, t.Any]:
     """A uniform interface to call a batch of hook implements."""
-    rfuts: t.List[asyncio.Future[_T] | _T] = []
+    rfuts: t.List[t.Union[asyncio.Future[_T], _T]] = []
     for impl in impls:
         try:
             c = impl(*args, **kwds)
@@ -56,7 +54,7 @@ class HookSpec(t.Generic[_P, _T]):
     impls: t.List[TyImpl[_P, _T]]
     """You can access this list to add/remove/clear_all implements."""
 
-    def __init__(self, hookdef: StaticHookSpec[_P, _T]) -> None:
+    def __init__(self, hookdef: "StaticHookSpec[_P, _T]") -> None:
         super().__init__()
         self.impls = []
         self.__def__ = hookdef.__def__

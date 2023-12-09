@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import typing as t
 from functools import wraps
@@ -17,10 +15,16 @@ __all__ = ["TimeoutHookSpec"]
 class TimeoutHookSpec(HookSpec[_P, _T]):
     """A HookSpec with a pre-defined timeout.
 
-    .. seealso:: :meth:`StaticHookSpec.with_timeout`
+    Internally, :meth:`.gather` and :meth:`.first` is wrapped with :external+python:obj:`asyncio.wait_for`.
+    Thus a :exc:`asyncio.TimeoutError` will be raised if timeout.
+
+    .. seealso::
+
+        :meth:`StaticHookSpec.with_timeout`
+        :external+python:obj:`asyncio.wait_for`
     """
 
-    def __init__(self, hookdef: StaticHookSpec[_P, _T], *, timeout: float) -> None:
+    def __init__(self, hookdef: "StaticHookSpec[_P, _T]", *, timeout: float) -> None:
         super().__init__(hookdef)
         self._timeout = timeout
 
