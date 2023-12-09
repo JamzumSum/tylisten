@@ -22,8 +22,13 @@ class StaticHookSpec(t.Generic[_P, _T]):
 
     @property
     def TyInst(self) -> t.Type[HookSpec[_P, _T]]:
-        """Designed for type checkers. Used to annotate the type of the instantiated hook."""
+        """Designed for type checkers. Used to annotate the type of a derived :class:`HookSpec`."""
         return HookSpec
+
+    @property
+    def TyTmInst(self) -> t.Type[TimeoutHookSpec[_P, _T]]:
+        """Designed for type checkers. Used to annotate the type of a derived :class:`TimeoutHookSpec`."""
+        return TimeoutHookSpec
 
     def __getattribute__(self, __name: str) -> Any:
         if __name in ("__name__", "__qualname__", "__doc__", "__module__"):

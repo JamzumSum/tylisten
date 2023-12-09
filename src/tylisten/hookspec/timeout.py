@@ -1,5 +1,6 @@
 import asyncio
 import typing as t
+from contextlib import suppress
 from functools import wraps
 
 from ._type import _P, _T
@@ -41,3 +42,8 @@ class TimeoutHookSpec(HookSpec[_P, _T]):
 
         setattr(self, name, wrapper)
         return meth
+
+    async def emit_suppress_timeout(self, *args: _P.args, **kwds: _P.kwargs) -> None:
+        """Call :meth:`.emit` and suppress :exc:`asyncio.TimeoutError`"""
+        with suppress(asyncio.TimeoutError):
+            return await super().emit(*args, **kwds)
