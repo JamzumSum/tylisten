@@ -24,11 +24,12 @@ For hook specifications, see:
 
 - [qqqr.message](https://github.com/aioqzone/aioqzone/blob/beta/src/qqqr/message.py)
 - [aioqzone.message](https://github.com/aioqzone/aioqzone/blob/beta/src/aioqzone/message.py)
+- [aioqzone_feed.message](https://github.com/aioqzone/aioqzone-feed/blob/beta/src/aioqzone_feed/message)
 
 For hook implementations, see:
 
-- [qzone3tg.app.base._hook][Qzone2TG]
-- [qzone3tg.app.interact._hook][Qzone2TG]
+- [qzone3tg.app.base._hook](https://github.com/aioqzone/Qzone2TG/blob/beta/src/qzone3tg/app/base/_hook.py)
+- [qzone3tg.app.interact._hook](https://github.com/aioqzone/Qzone2TG/blob/beta/src/qzone3tg/app/interact/_hook.py)
 
 ## License
 
