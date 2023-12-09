@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tylisten"
-version = "2.0.1"
+version = "2.0.2"
 description = "A tiny hook specification library with typing support."
 authors = ["JamzumSum <zzzzss990315@gmail.com>"]
 license = "MIT"
