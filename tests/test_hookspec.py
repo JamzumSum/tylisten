@@ -1,3 +1,6 @@
+import asyncio
+from time import time
+
 import pytest
 
 from tylisten import hookdef
@@ -65,6 +68,22 @@ class TestHookSpec:
 
         hook.add_impl(lambda a: a - 1)
         assert 3 == await hook(4)
+
+    async def test_async(self, hook: test_message.TyInst):
+        assert not hook.has_impl
+
+        async def sleep_echo(a: int):
+            await asyncio.sleep(1)
+            return a
+
+        for _ in range(4):
+            hook.add_impl(sleep_echo)
+
+        start = asyncio.get_event_loop().time()
+        await hook.emit(1)
+        end = asyncio.get_event_loop().time()
+
+        assert end - start < 2
 
     def test_wrap(self):
         assert test_message.__name__ == "test_message"

@@ -17,17 +17,14 @@ async def call_impls(
     impls: t.Iterable[TyImpl[_P, _T]], *args: _P.args, **kwds: _P.kwargs
 ) -> t.AsyncGenerator[_T, t.Any]:
     """A uniform interface to call a batch of hook implements."""
+    rfuts = [
+        asyncio.ensure_future(c) if isawaitable(c := impl(*args, **kwds)) else c for impl in impls
+    ]
 
-    for listener in impls:
-        try:
-            c = listener(*args, **kwds)
-        except:
-            log.error("sync listener error!", exc_info=True)
-            continue
-
-        if isawaitable(c):
+    for rfut in rfuts:
+        if asyncio.isfuture(rfut):
             try:
-                c = await c
+                yield await rfut
             except asyncio.CancelledError:
                 raise
             except:
