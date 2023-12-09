@@ -65,3 +65,10 @@ class TestHookSpec:
 
         hook.add_impl(lambda a: a - 1)
         assert 3 == await hook(4)
+
+    def test_wrap(self):
+        assert test_message.__name__ == "test_message"
+        assert test_message.__qualname__.endswith("test_message")
+        assert __name__ in test_message.__module__
+        assert test_message.__doc__
+        assert "A test hook defination." in test_message.__doc__

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import typing as t
 from inspect import isawaitable
+from typing import Any
 
 from typing_extensions import ParamSpec, Self
 
@@ -55,6 +56,11 @@ class StaticHookSpec(t.Generic[_P, _T]):
         """Designed for type checkers. Used to annotate the type of the instantiated hook."""
         return HookSpec
 
+    def __getattribute__(self, __name: str) -> Any:
+        if __name in ("__name__", "__qualname__", "__doc__", "__module__"):
+            return getattr(self.__def__, __name)
+        return super().__getattribute__(__name)
+
 
 class HookSpec(t.Generic[_P, _T]):
     """An instance of a :class:`StaticHookSpec`."""
@@ -70,7 +76,7 @@ class HookSpec(t.Generic[_P, _T]):
         self.__def__ = hookdef.__def__
 
     def add_impl(self, impl: TyImpl[_P, _T]) -> Self:
-        """A shortcut to `.impls.append`."""
+        """A shortcut to :obj:`.impls`.append."""
         self.impls.append(impl)
         return self
 
@@ -82,7 +88,7 @@ class HookSpec(t.Generic[_P, _T]):
     """An alias to :meth:`.gather`."""
 
     async def emit(self, *args: _P.args, **kwds: _P.kwargs) -> None:
-        """Like `.gather`, but returns `None`."""
+        """Like :meth:`.gather`, but returns `None`."""
         await self.gather(*args, **kwds)
 
     async def first(self, *args: _P.args, **kwds: _P.kwargs) -> _T:
@@ -103,6 +109,6 @@ class HookSpec(t.Generic[_P, _T]):
             return await c if isawaitable(c) else c  # type: ignore
 
     @property
-    def has_impl(self):
+    def has_impl(self) -> bool:
         """Return if a hook is implemented."""
         return bool(self.impls)

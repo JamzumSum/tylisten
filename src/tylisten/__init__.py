@@ -15,3 +15,6 @@ __all__ = [
 
 hookdef = StaticHookSpec
 null_emitter: HookSpec[Any, Any] = StaticHookSpec(lambda *args, **kwds: None).instantiate()
+"""
+A built-in emitter which could be used as a default spec.
+"""
