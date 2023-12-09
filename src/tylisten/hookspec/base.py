@@ -2,75 +2,59 @@ import asyncio
 import logging
 import typing as t
 from inspect import isawaitable
-from typing import Any
 
-from typing_extensions import ParamSpec, Self
+from typing_extensions import Self
 
-_T = t.TypeVar("_T")
-_P = ParamSpec("_P")
-TyImpl = t.Callable[_P, t.Union[t.Awaitable[_T], _T]]
+from ._type import _P, _T, TyImpl
 
 log = logging.getLogger(__name__)
+
+if t.TYPE_CHECKING:
+    from .static import StaticHookSpec
+
+__all__ = ["HookSpec"]
 
 
 async def call_impls(
     impls: t.Iterable[TyImpl[_P, _T]], *args: _P.args, **kwds: _P.kwargs
 ) -> t.AsyncGenerator[_T, t.Any]:
     """A uniform interface to call a batch of hook implements."""
-
-    for listener in impls:
+    rfuts: t.List[t.Union[asyncio.Future[_T], _T]] = []
+    for impl in impls:
         try:
-            c = listener(*args, **kwds)
+            c = impl(*args, **kwds)
         except:
-            log.error("sync listener error!", exc_info=True)
+            log.error("sync listener error")
             continue
 
-        if isawaitable(c):
+        rfuts.append(asyncio.ensure_future(c) if isawaitable(c) else c)  # type: ignore
+        asyncio.Future
+
+    for rfut in rfuts:
+        if asyncio.isfuture(rfut):
             try:
-                c = await c
+                yield await rfut
             except asyncio.CancelledError:
                 raise
             except:
                 log.error("async listener error!", exc_info=True)
                 continue
-
-        yield c  # type: ignore
-
-
-class StaticHookSpec(t.Generic[_P, _T]):
-    """Define a hook. The wrapped function will be the original defination."""
-
-    __slots__ = ("__def__",)
-
-    def __init__(self, defination: TyImpl[_P, _T]) -> None:
-        self.__def__ = defination
-
-    def instantiate(self) -> "HookSpec[_P, _T]":
-        """Get a :class:`HookSpec` of this hook."""
-        return HookSpec(self)
-
-    __call__ = instantiate
-
-    @property
-    def TyInst(self) -> "t.Type[HookSpec[_P, _T]]":
-        """Designed for type checkers. Used to annotate the type of the instantiated hook."""
-        return HookSpec
-
-    def __getattribute__(self, __name: str) -> Any:
-        if __name in ("__name__", "__qualname__", "__doc__", "__module__"):
-            return getattr(self.__def__, __name)
-        return super().__getattribute__(__name)
+        else:
+            yield rfut  # type: ignore
 
 
 class HookSpec(t.Generic[_P, _T]):
-    """An instance of a :class:`StaticHookSpec`."""
+    """An instance of a :class:`StaticHookSpec`.
+
+    .. seealso:: :meth:`StaticHookSpec.__call__`
+    """
 
     __slots__ = ("__def__", "impls")
 
     impls: t.List[TyImpl[_P, _T]]
     """You can access this list to add/remove/clear_all implements."""
 
-    def __init__(self, hookdef: StaticHookSpec[_P, _T]) -> None:
+    def __init__(self, hookdef: "StaticHookSpec[_P, _T]") -> None:
         super().__init__()
         self.impls = []
         self.__def__ = hookdef.__def__
@@ -92,9 +76,23 @@ class HookSpec(t.Generic[_P, _T]):
         await self.gather(*args, **kwds)
 
     async def first(self, *args: _P.args, **kwds: _P.kwargs) -> _T:
-        """Get the first valid result. If all results are invalid, raise `StopAsyncIteration`."""
-        async for i in call_impls(self.impls, *args, **kwds):
-            return i
+        """
+        Get the first valid result.
+
+        If all results are invalid, raise `StopAsyncIteration`.
+        """
+        for impl in self.impls:
+            try:
+                c = impl(*args, **kwds)
+                if isawaitable(c):
+                    return await c
+                return c  # type: ignore
+            except asyncio.CancelledError:
+                raise
+            except:
+                log.error("listener error", exc_info=True)
+                continue
+
         raise StopAsyncIteration
 
     async def __call__(self, *args: _P.args, **kwds: _P.kwargs) -> _T:

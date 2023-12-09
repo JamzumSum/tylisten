@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from tylisten import hookdef
@@ -13,13 +15,18 @@ async def test_message(a: int) -> int:
 
 # fmt: off
 async def aboom(a): raise RuntimeError
-async def boom(a): raise RuntimeError
+def boom(a): raise RuntimeError
 # fmt: on
 
 
 @pytest.fixture
 def hook():
     return test_message()
+
+
+@pytest.fixture
+def timeout():
+    return test_message.with_timeout(0.5)
 
 
 class TestHookSpec:
@@ -66,9 +73,45 @@ class TestHookSpec:
         hook.add_impl(lambda a: a - 1)
         assert 3 == await hook(4)
 
+    async def test_async(self, hook: test_message.TyInst):
+        assert not hook.has_impl
+
+        async def sleep_echo(a: int):
+            await asyncio.sleep(1)
+            return a
+
+        for _ in range(4):
+            hook.add_impl(sleep_echo)
+
+        start = asyncio.get_event_loop().time()
+        await hook.emit(1)
+        end = asyncio.get_event_loop().time()
+
+        assert end - start < 2
+
     def test_wrap(self):
         assert test_message.__name__ == "test_message"
         assert test_message.__qualname__.endswith("test_message")
         assert __name__ in test_message.__module__
         assert test_message.__doc__
         assert "A test hook defination." in test_message.__doc__
+
+
+async def test_timeout(timeout: test_message.TyInst):
+    assert not timeout.has_impl
+
+    async def sleep(a: int):
+        await asyncio.sleep(a)
+        return a
+
+    timeout.add_impl(lambda a: a)
+    timeout.add_impl(sleep)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await timeout.gather(1)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await timeout.emit(1)
+
+    assert 1 == await timeout.first(1)
+    assert 1 == await timeout(1)
