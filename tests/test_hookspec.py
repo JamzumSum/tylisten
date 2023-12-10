@@ -95,6 +95,7 @@ class TestHookSpec:
         assert __name__ in test_message.__module__
         assert test_message.__doc__
         assert "A test hook defination." in test_message.__doc__
+        assert "a" in test_message.__annotations__
 
 
 async def test_timeout(timeout: test_message.TyTmInst):
