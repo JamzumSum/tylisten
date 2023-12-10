@@ -1,5 +1,6 @@
 import logging
 import typing as t
+from functools import WRAPPER_ASSIGNMENTS
 from typing import Any
 
 from ._type import _P, _T, TyImpl
@@ -15,10 +16,10 @@ __all__ = ["StaticHookSpec"]
 class StaticHookSpec(t.Generic[_P, _T]):
     """Defines a hook. The wrapped function will be the original defination."""
 
-    __slots__ = ("__def__",)
+    __slots__ = ("__wrapped__",)
 
     def __init__(self, defination: TyImpl[_P, _T]) -> None:
-        self.__def__ = defination
+        self.__wrapped__ = defination
 
     @property
     def TyInst(self) -> t.Type[HookSpec[_P, _T]]:
@@ -31,8 +32,8 @@ class StaticHookSpec(t.Generic[_P, _T]):
         return TimeoutHookSpec
 
     def __getattribute__(self, __name: str) -> Any:
-        if __name in ("__name__", "__qualname__", "__doc__", "__module__"):
-            return getattr(self.__def__, __name)
+        if __name in WRAPPER_ASSIGNMENTS:
+            return getattr(self.__wrapped__, __name)
         return super().__getattribute__(__name)
 
     def __call__(self) -> HookSpec[_P, _T]:

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tylisten"
-version = "2.1.2"
+version = "2.2.0"
 description = "A tiny hook specification library with typing support."
 authors = ["JamzumSum <zzzzss990315@gmail.com>"]
 license = "MIT"
@@ -38,7 +38,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 pre-commit = "*"
 black = "*"
-isort = "*"
+isort = ">=5.13.0"
 
 [tool.poetry.group.docs]
 optional = true

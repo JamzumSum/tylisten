@@ -49,7 +49,7 @@ class HookSpec(t.Generic[_P, _T]):
     .. seealso:: :meth:`StaticHookSpec.__call__`
     """
 
-    __slots__ = ("__def__", "impls")
+    __slots__ = ("__wrapped__", "impls")
 
     impls: t.List[TyImpl[_P, _T]]
     """You can access this list to add/remove/clear_all implements."""
@@ -57,7 +57,7 @@ class HookSpec(t.Generic[_P, _T]):
     def __init__(self, hookdef: "StaticHookSpec[_P, _T]") -> None:
         super().__init__()
         self.impls = []
-        self.__def__ = hookdef.__def__
+        self.__wrapped__ = hookdef.__wrapped__
 
     def add_impl(self, impl: TyImpl[_P, _T]) -> Self:
         """A shortcut to :obj:`.impls`.append."""
@@ -103,7 +103,7 @@ class HookSpec(t.Generic[_P, _T]):
         try:
             return await self.first(*args, **kwds)
         except StopAsyncIteration:
-            c = self.__def__(*args, **kwds)
+            c = self.__wrapped__(*args, **kwds)
             return await c if isawaitable(c) else c  # type: ignore
 
     @property
