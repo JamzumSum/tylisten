@@ -97,6 +97,23 @@ class TestHookSpec:
         assert "A test hook defination." in test_message.__doc__
         assert "a" in test_message.__annotations__
 
+    async def test_inherit(self, hook: test_message.TyInst):
+        assert 0 == await hook(1)
+
+        hook.add_impl(sup := lambda a: 1)
+        assert 1 == await hook(1)
+
+        hook.add_impl(lambda a: 9)
+
+        @hook.replace_impl(sup)
+        async def plus1(a: int):
+            return a + 1
+
+        assert 2 == await hook(1)
+
+        hook.replace_impl(0, lambda a: a + 2)
+        assert 3 == await hook(1)
+
 
 async def test_timeout(timeout: test_message.TyTmInst):
     assert not timeout.has_impl

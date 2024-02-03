@@ -30,6 +30,8 @@ exclude_patterns = []
 html_theme = "furo"
 html_static_path = ["_static"]
 
+autodoc_member_order = "bysource"
+
 # external inventory
 intersphinx_mapping = {
     # "httpx": ("https://www.python-httpx.org/", None),

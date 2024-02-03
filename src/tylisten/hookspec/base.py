@@ -64,8 +64,42 @@ class HookSpec(t.Generic[_P, _T]):
         self.impls.append(impl)
         return self
 
+    @t.overload
+    def replace_impl(
+        self, index_or_impl: t.Union[int, TyImpl[_P, _T]]
+    ) -> t.Callable[[TyImpl[_P, _T]], None]: ...
+
+    @t.overload
+    def replace_impl(
+        self, index_or_impl: t.Union[int, TyImpl[_P, _T]], new_impl: TyImpl[_P, _T]
+    ) -> None: ...
+
+    def replace_impl(
+        self,
+        index_or_impl: t.Union[int, TyImpl[_P, _T]],
+        new_impl: t.Optional[TyImpl[_P, _T]] = None,
+    ) -> t.Union[None, t.Callable[[TyImpl[_P, _T]], None]]:
+        """Replace an implementation according to the given index or function.
+
+        :param index_or_impl: The index or the function.
+            The function will be transformed to index by :obj:`.impls`.index.
+        :param new_impl: If not given, this method could be used as a decorator.
+
+        :raise ValueError: If :obj:`index_or_impl` is a function AND not present in :obj:`.impls`.
+        """
+        if not isinstance(index_or_impl, int):
+            index_or_impl = self.impls.index(index_or_impl)
+
+        if new_impl is None:
+            return lambda f: self.impls.__setitem__(index_or_impl, f)
+
+        self.impls[index_or_impl] = new_impl
+
     async def gather(self, *args: _P.args, **kwds: _P.kwargs) -> t.List[_T]:
-        """Gather all results, results respsect the corresponding order in `.impls`."""
+        """Gather all results, results respsect the corresponding order in :obj:`.impls`.
+
+        :return: All results corresponding the order in :obj:`.impls`
+        """
         return [i async for i in call_impls(self.impls, *args, **kwds)]
 
     results = gather
@@ -79,7 +113,11 @@ class HookSpec(t.Generic[_P, _T]):
         """
         Get the first valid result.
 
-        If all results are invalid, raise `StopAsyncIteration`.
+        If all results are invalid, raises :exc:`StopAsyncIteration`.
+
+        :raise StopAsyncIteration: If all results are invalid.
+
+        :return: The first valid result.
         """
         for impl in self.impls:
             try:
@@ -99,6 +137,8 @@ class HookSpec(t.Generic[_P, _T]):
         """
         Get the first valid result.
         If all results are invalid, call the defination and return its result.
+
+        :return: The first valid result. If all results are invalid, returns the result of the defination.
         """
         try:
             return await self.first(*args, **kwds)
@@ -108,5 +148,8 @@ class HookSpec(t.Generic[_P, _T]):
 
     @property
     def has_impl(self) -> bool:
-        """Return if a hook is implemented."""
+        """Return if a hook is implemented.
+
+        :return: If this hook is implemented.
+        """
         return bool(self.impls)
