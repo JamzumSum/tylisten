@@ -31,9 +31,9 @@ class TimeoutHookSpec(HookSpec[_P, _T]):
 
         timeout_meths = [self.gather, self.first]
         for meth in timeout_meths:
-            self._with_timeout(meth.__name__)
+            self.__with_timeout(meth.__name__)
 
-    def _with_timeout(self, name: str):
+    def __with_timeout(self, name: str):
         meth = getattr(self, name)
 
         @wraps(meth)
