@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "tylisten"
-copyright = "2023, JamzumSum"
+copyright = "2023-2025, JamzumSum"
 author = "JamzumSum"
 
 # -- General configuration ---------------------------------------------------
