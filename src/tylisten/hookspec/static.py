@@ -4,13 +4,12 @@ from functools import WRAPPER_ASSIGNMENTS
 from typing import Any
 
 from ._type import _P, _T, TyImpl
-
-log = logging.getLogger(__name__)
-
 from .base import HookSpec
 from .timeout import TimeoutHookSpec
 
 __all__ = ["StaticHookSpec"]
+
+log = logging.getLogger(__name__)
 
 
 class StaticHookSpec(t.Generic[_P, _T]):
