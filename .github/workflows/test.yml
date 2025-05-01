@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.8"]
+        python-version: ["3.13", "3.9"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -28,7 +28,7 @@ jobs:
       - name: Install and Test
         run: |
           echo "::group::Install Dependencies"
-          uv sync --all-extras
+          uv sync --all-extras --group test
           echo "::endgroup::"
 
           echo "::group::pytest outputs"
