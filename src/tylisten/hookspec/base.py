@@ -23,7 +23,7 @@ async def call_impls(
     for impl in impls:
         try:
             c = impl(*args, **kwds)
-        except:
+        except BaseException:
             log.error("sync listener error")
             continue
 
@@ -36,7 +36,7 @@ async def call_impls(
                 yield await rfut
             except asyncio.CancelledError:
                 raise
-            except:
+            except BaseException:
                 log.error("async listener error!", exc_info=True)
                 continue
         else:
@@ -127,7 +127,7 @@ class HookSpec(t.Generic[_P, _T]):
                 return c  # type: ignore
             except asyncio.CancelledError:
                 raise
-            except:
+            except BaseException:
                 log.error("listener error", exc_info=True)
                 continue
 

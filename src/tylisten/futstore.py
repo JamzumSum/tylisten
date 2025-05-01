@@ -49,8 +49,8 @@ class FutureStore:
 
         :param exc: if not given, all futures will be cancelled; else they will be set with this exception.
         """
-        for t in self._futs:
-            t.cancel()
+        for task in self._futs:
+            task.cancel()
 
     def __bool__(self):
         return bool(self._futs)

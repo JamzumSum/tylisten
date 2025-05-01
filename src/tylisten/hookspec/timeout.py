@@ -21,7 +21,7 @@ class TimeoutHookSpec(HookSpec[_P, _T]):
 
     .. seealso::
 
-        :meth:`StaticHookSpec.with_timeout`
+        :meth:`tylisten.StaticHookSpec.with_timeout`
         :external+python:obj:`asyncio.wait_for`
     """
 
