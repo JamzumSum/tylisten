@@ -38,4 +38,4 @@ jobs:
           UV_PUBLISH_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
           uv build
-          uv publish --build --username __token__
+          uv publish --username __token__
