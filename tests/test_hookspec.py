@@ -89,7 +89,7 @@ class TestHookSpec:
 
         assert end - start < 2
 
-    def test_wrap(self):
+    async def test_wrap(self):
         assert test_message.__name__ == "test_message"
         assert test_message.__qualname__.endswith("test_message")
         assert __name__ in test_message.__module__

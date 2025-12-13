@@ -12,9 +12,10 @@ class FutureStore:
 
     _futs: t.Set[asyncio.Future]
 
-    def __init__(self) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop | None = None) -> None:
         super().__init__()
         self._futs = set()
+        self.loop = loop
 
     def add_awaitable(self, func: t.Awaitable[T]) -> "asyncio.Future[T]":
         """Add an awaitable into this store.
@@ -22,7 +23,7 @@ class FutureStore:
         :param func: the awaitable
         :return: the wrapped task
         """
-        if not (func := asyncio.ensure_future(func)).done():
+        if not (func := asyncio.ensure_future(func, loop=self.loop)).done():
             self._futs.add(func)
             func.add_done_callback(self._futs.discard)
         return func
