@@ -33,6 +33,10 @@ class StaticHookSpec(t.Generic[_P, _T]):
     def __getattribute__(self, __name: str) -> Any:
         if __name in WRAPPER_ASSIGNMENTS:
             return getattr(self.__def__, __name)
+        if __name == "__annotations__":
+            # python 3.14: __annotations__ lazy evaluation
+            # BUG: is this readonly?
+            return getattr(self.__def__, __name, {})
         return super().__getattribute__(__name)
 
     def __call__(self) -> HookSpec[_P, _T]:
