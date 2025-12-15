@@ -506,15 +506,6 @@ wheels = [
 ]
 
 [[package]]
-name = "setuptools"
-version = "80.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/aa/b2/bd26ed086b842b68c8fe9aac380ad7e5118cf84fa7abd45bb059a88368a8/setuptools-80.1.0.tar.gz", hash = "sha256:2e308396e1d83de287ada2c2fd6e64286008fe6aca5008e0b6a8cb0e2c86eedd", size = 1354038, upload-time = "2025-04-30T17:41:06.171Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8b/f6/126c9309c8fe93e5d6bb850593cd58d591daf2da45cc78b61e48d8d95879/setuptools-80.1.0-py3-none-any.whl", hash = "sha256:ea0e7655c05b74819f82e76e11a85b31779fee7c4969e82f72bab0664e8317e4", size = 1240689, upload-time = "2025-04-30T17:41:03.789Z" },
-]
-
-[[package]]
 name = "snowballstemmer"
 version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -639,18 +630,17 @@ wheels = [
 
 [[package]]
 name = "sphinx-intl"
-version = "2.3.1"
+version = "2.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "babel" },
     { name = "click" },
-    { name = "setuptools" },
     { name = "sphinx", version = "7.4.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sphinx", version = "8.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/01/4f64b7d28e3e0cbf25a70a79f26c4683c987ca7c6c265492115cfb302ca4/sphinx_intl-2.3.1.tar.gz", hash = "sha256:e2d04b907f57a029d46b4da344fd791e660d935eab6ced8a274fc65446389af1", size = 28006, upload-time = "2024-12-01T12:20:16.934Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/21/eb12016ecb0b52861762b0d227dff75622988f238776a5ee4c75bade507e/sphinx_intl-2.3.2.tar.gz", hash = "sha256:04b0d8ea04d111a7ba278b17b7b3fe9625c58b6f8ffb78bb8a1dd1288d88c1c7", size = 27921, upload-time = "2025-08-02T04:53:01.891Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/5d/6a9d1460ef6e079d00350eb6203efd6a6a899692e927b9b18d652490b5e5/sphinx_intl-2.3.1-py3-none-any.whl", hash = "sha256:e3f4be80743e0e4c778fbc07e72b062c13c88c50645a69b62557a3f57a24b7fc", size = 13801, upload-time = "2024-12-01T12:20:10.359Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/3b/156032fa29a87e9eba9182b8e893a7e88c1d98907a078a371d69be432e52/sphinx_intl-2.3.2-py3-none-any.whl", hash = "sha256:f0082f9383066bab8406129a2ed531d21c38706d08467bf5ca3714e8914bb2be", size = 12899, upload-time = "2025-08-02T04:53:00.353Z" },
 ]
 
 [[package]]
