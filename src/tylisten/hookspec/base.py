@@ -24,7 +24,7 @@ async def call_impls(
         try:
             c = impl(*args, **kwds)
         except BaseException:
-            log.error("sync listener error")
+            log.error("sync listener error!", exc_info=True)
             continue
 
         rfuts.append(asyncio.ensure_future(c) if isawaitable(c) else c)  # type: ignore
