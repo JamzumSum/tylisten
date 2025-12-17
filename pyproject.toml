@@ -1,6 +1,6 @@
 [project]
 name = "tylisten"
-version = "2.3.0"
+version = "2.3.1"
 description = "A tiny hook specification library with typing support."
 authors = [
     {name = "JamzumSum", email = "22952836+JamzumSum@users.noreply.github.com"}
