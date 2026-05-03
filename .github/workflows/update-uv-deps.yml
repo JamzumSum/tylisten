@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update-deps:
@@ -39,12 +40,16 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Commit changes
+      - name: Create Pull Request
         if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          BRANCH="dev/update-uv-$(date +%Y%m%d%H%M%S)"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
           git add uv.lock
           COMMIT_DELIM="COMMITMSG_$(date +%s)_$$"
           git commit -F - << "$COMMIT_DELIM"
@@ -52,4 +57,11 @@ jobs:
 
           ${{ steps.preview.outputs.log }}
           $COMMIT_DELIM
-          git push
+          git push origin "$BRANCH"
+          PR_URL=$(gh pr create \
+            --base "${{ github.ref_name }}" \
+            --head "$BRANCH" \
+            --title "chore(deps): update dependencies" \
+            --body "${{ steps.preview.outputs.log }}" \
+            --label dependencies)
+          gh pr merge "$PR_URL" --auto --squash
