@@ -6,12 +6,12 @@ from .futstore import FutureStore
 from .hookspec import HookSpec, StaticHookSpec, TimeoutHookSpec
 
 __all__ = [
-    "StaticHookSpec",
+    "FutureStore",
     "HookSpec",
+    "StaticHookSpec",
     "TimeoutHookSpec",
     "hookdef",
     "null_emitter",
-    "FutureStore",
 ]
 
 hookdef = StaticHookSpec

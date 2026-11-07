@@ -2,8 +2,7 @@ import asyncio
 import logging
 import typing as t
 from inspect import isawaitable
-
-from typing_extensions import Self
+from typing import Self
 
 from ._type import _P, _T, TyImpl
 
@@ -19,16 +18,15 @@ async def call_impls(
     impls: t.Iterable[TyImpl[_P, _T]], *args: _P.args, **kwds: _P.kwargs
 ) -> t.AsyncGenerator[_T, t.Any]:
     """A uniform interface to call a batch of hook implements."""
-    rfuts: t.List[t.Union[asyncio.Future[_T], _T]] = []
+    rfuts: list[asyncio.Future[_T] | _T] = []
     for impl in impls:
         try:
             c = impl(*args, **kwds)
         except BaseException:
-            log.error("sync listener error!", exc_info=True)
+            log.exception("sync listener error!")
             continue
 
         rfuts.append(asyncio.ensure_future(c) if isawaitable(c) else c)  # type: ignore
-        asyncio.Future
 
     for rfut in rfuts:
         if asyncio.isfuture(rfut):
@@ -37,7 +35,7 @@ async def call_impls(
             except asyncio.CancelledError:
                 raise
             except BaseException:
-                log.error("async listener error!", exc_info=True)
+                log.exception("async listener error!")
                 continue
         else:
             yield rfut  # type: ignore
@@ -51,7 +49,7 @@ class HookSpec(t.Generic[_P, _T]):
 
     __slots__ = ("__def__", "impls")
 
-    impls: t.List[TyImpl[_P, _T]]
+    impls: list[TyImpl[_P, _T]]
     """You can access this list to add/remove/clear_all implements."""
 
     def __init__(self, hookdef: "StaticHookSpec[_P, _T]") -> None:
@@ -66,19 +64,19 @@ class HookSpec(t.Generic[_P, _T]):
 
     @t.overload
     def replace_impl(
-        self, index_or_impl: t.Union[int, TyImpl[_P, _T]]
+        self, index_or_impl: int | TyImpl[_P, _T]
     ) -> t.Callable[[TyImpl[_P, _T]], None]: ...
 
     @t.overload
     def replace_impl(
-        self, index_or_impl: t.Union[int, TyImpl[_P, _T]], new_impl: TyImpl[_P, _T]
+        self, index_or_impl: int | TyImpl[_P, _T], new_impl: TyImpl[_P, _T]
     ) -> None: ...
 
     def replace_impl(
         self,
-        index_or_impl: t.Union[int, TyImpl[_P, _T]],
-        new_impl: t.Optional[TyImpl[_P, _T]] = None,
-    ) -> t.Union[None, t.Callable[[TyImpl[_P, _T]], None]]:
+        index_or_impl: int | TyImpl[_P, _T],
+        new_impl: TyImpl[_P, _T] | None = None,
+    ) -> None | t.Callable[[TyImpl[_P, _T]], None]:
         """Replace an implementation according to the given index or function.
 
         :param index_or_impl: The index or the function.
@@ -95,7 +93,7 @@ class HookSpec(t.Generic[_P, _T]):
 
         self.impls[index_or_impl] = new_impl
 
-    async def gather(self, *args: _P.args, **kwds: _P.kwargs) -> t.List[_T]:
+    async def gather(self, *args: _P.args, **kwds: _P.kwargs) -> list[_T]:
         """Gather all results, results respsect the corresponding order in :obj:`.impls`.
 
         :return: All results corresponding the order in :obj:`.impls`
@@ -128,7 +126,7 @@ class HookSpec(t.Generic[_P, _T]):
             except asyncio.CancelledError:
                 raise
             except BaseException:
-                log.error("listener error", exc_info=True)
+                log.exception("listener error")
                 continue
 
         raise StopAsyncIteration

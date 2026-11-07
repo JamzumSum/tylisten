@@ -10,7 +10,7 @@ class FutureStore:
     in order to keep them from being garbage collected.
     """
 
-    _futs: t.Set[asyncio.Future]
+    _futs: set[asyncio.Future]
 
     def __init__(self, loop: asyncio.AbstractEventLoop | None = None) -> None:
         """Create a :class:`FutureStore`.
