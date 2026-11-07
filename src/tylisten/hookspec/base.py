@@ -14,6 +14,28 @@ if t.TYPE_CHECKING:
 __all__ = ["HookSpec"]
 
 
+class _ProcessExit(Exception):
+    """Internal carrier for KeyboardInterrupt/SystemExit escaping a listener task."""
+
+    def __init__(self, exc: BaseException) -> None:
+        super().__init__(str(exc))
+        self.exc = exc
+
+
+async def _guard(awaitable: t.Awaitable[_T]) -> _T:
+    """Keep process-level exceptions inside the listener task.
+
+    :class:`asyncio.Task` re-raises :exc:`KeyboardInterrupt` and :exc:`SystemExit`
+    into the event loop, so the caller of ``await task`` cannot log them or clean up.
+    Catching them here and raising an ordinary exception keeps control flow inside
+    the task.
+    """
+    try:
+        return await awaitable
+    except (KeyboardInterrupt, SystemExit) as exc:
+        raise _ProcessExit(exc) from exc
+
+
 async def call_impls(
     impls: t.Iterable[TyImpl[_P, _T]], *args: _P.args, **kwds: _P.kwargs
 ) -> t.AsyncGenerator[_T, t.Any]:
@@ -26,6 +48,7 @@ async def call_impls(
     shutdown.
     """
     rfuts: list[tuple[TyImpl[_P, _T], asyncio.Future[_T] | _T]] = []
+    handled: set[asyncio.Future] = set()
 
     try:
         for impl in impls:
@@ -40,32 +63,77 @@ async def call_impls(
                 log.exception("sync listener %r error", impl)
                 continue
 
-            rfuts.append((impl, asyncio.ensure_future(c) if isawaitable(c) else c))
+            rfuts.append((impl, asyncio.ensure_future(_guard(c)) if isawaitable(c) else c))
 
         for impl, rfut in rfuts:
             if asyncio.isfuture(rfut):
                 try:
-                    yield await rfut
+                    result = await rfut
                 except asyncio.CancelledError:
                     raise
+                except _ProcessExit as exc:
+                    log.exception(
+                        "listener %r interrupted by %s",
+                        impl,
+                        type(exc.exc).__name__,
+                        exc_info=exc.exc,
+                    )
+                    handled.add(rfut)
+                    raise exc.exc from None
                 except (KeyboardInterrupt, SystemExit) as exc:
                     log.exception("listener %r interrupted by %s", impl, type(exc).__name__)
+                    handled.add(rfut)
                     raise
                 except Exception:
                     log.exception("async listener %r error", impl)
+                    handled.add(rfut)
                     continue
+                yield result
             else:
                 yield rfut  # type: ignore
     finally:
         # The consumer may stop early (for example, on timeout). Never leave
         # listener tasks running unobserved in the background. Gathering every
-        # future also retrieves exceptions from tasks the consumer never reached.
-        futs = [fut for _, fut in rfuts if asyncio.isfuture(fut)]
-        for fut in futs:
+        # future also retrieves exceptions from tasks the consumer never reached;
+        # failures that were not handled in the loop above are logged here so
+        # they are not lost silently.
+        futs = [(impl, fut) for impl, fut in rfuts if asyncio.isfuture(fut)]
+        for _, fut in futs:
             if not fut.done():
                 fut.cancel()
         if futs:
-            await asyncio.gather(*futs, return_exceptions=True)
+            results = await asyncio.gather(*(fut for _, fut in futs), return_exceptions=True)
+            process_exit: BaseException | None = None
+            for (impl, fut), result in zip(futs, results):
+                if fut in handled or isinstance(result, asyncio.CancelledError):
+                    continue
+                if isinstance(result, _ProcessExit):
+                    log.exception(
+                        "listener %r interrupted by %s",
+                        impl,
+                        type(result.exc).__name__,
+                        exc_info=result.exc,
+                    )
+                    if process_exit is None:
+                        process_exit = result.exc
+                elif isinstance(result, (KeyboardInterrupt, SystemExit)):
+                    log.exception(
+                        "listener %r interrupted by %s",
+                        impl,
+                        type(result).__name__,
+                        exc_info=result,
+                    )
+                    if process_exit is None:
+                        process_exit = result
+                elif isinstance(result, BaseException):
+                    log.exception("listener %r error", impl, exc_info=result)
+                    if not isinstance(result, Exception) and process_exit is None:
+                        process_exit = result
+
+            # A process-level exception must not be reduced to a log entry, even
+            # when the consumer is already unwinding (e.g. on timeout).
+            if process_exit is not None:
+                raise process_exit
 
 
 class HookSpec(t.Generic[_P, _T]):

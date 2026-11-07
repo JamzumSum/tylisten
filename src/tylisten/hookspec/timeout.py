@@ -16,28 +16,32 @@ class TimeoutHookSpec(HookSpec[_P, _T]):
     """A HookSpec with a pre-defined timeout.
 
     :meth:`.gather`, :meth:`.results`, :meth:`.emit`, :meth:`.first` and
-    :meth:`~tylisten.HookSpec.__call__` are wrapped with
-    :external+python:obj:`asyncio.wait_for`.
-    Thus a :exc:`asyncio.TimeoutError` will be raised if timeout, and any
+    :meth:`~tylisten.HookSpec.__call__` use :external+python:obj:`asyncio.timeout`.
+    Calling the instance times the whole call, including the hook definition
+    fallback. Thus a :exc:`asyncio.TimeoutError` will be raised if timeout, and any
     still-running listener tasks are cancelled.
 
     .. seealso::
 
         :meth:`tylisten.StaticHookSpec.with_timeout`
-        :external+python:obj:`asyncio.wait_for`
+        :external+python:obj:`asyncio.timeout`
     """
-
-    __slots__ = ("_timeout",)
 
     def __init__(self, hookdef: "StaticHookSpec[_P, _T]", *, timeout: float) -> None:
         super().__init__(hookdef)
         self._timeout = timeout
 
     async def gather(self, *args: _P.args, **kwds: _P.kwargs) -> list[_T]:
-        return await asyncio.wait_for(super().gather(*args, **kwds), timeout=self._timeout)
+        async with asyncio.timeout(self._timeout):
+            return await super().gather(*args, **kwds)
 
     async def first(self, *args: _P.args, **kwds: _P.kwargs) -> _T:
-        return await asyncio.wait_for(super().first(*args, **kwds), timeout=self._timeout)
+        async with asyncio.timeout(self._timeout):
+            return await super().first(*args, **kwds)
+
+    async def __call__(self, *args: _P.args, **kwds: _P.kwargs) -> _T:
+        async with asyncio.timeout(self._timeout):
+            return await super().__call__(*args, **kwds)
 
     async def emit_suppress_timeout(self, *args: _P.args, **kwds: _P.kwargs) -> None:
         """Call :meth:`.emit` and suppress :exc:`asyncio.TimeoutError`.

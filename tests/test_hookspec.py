@@ -188,6 +188,55 @@ async def test_process_exception_propagates(exc_type):
         await hook.first(1)
 
 
+@pytest.mark.parametrize("exc_type", [KeyboardInterrupt, SystemExit])
+async def test_async_process_exception_propagates(exc_type):
+    async def raise_process_exception(a: int):
+        raise exc_type
+
+    hook = message_hook()
+    hook.add_impl(raise_process_exception)
+
+    with pytest.raises(exc_type):
+        await hook.gather(1)
+
+    with pytest.raises(exc_type):
+        await hook.first(1)
+
+
+async def test_async_process_exception_cancels_pending():
+    cancelled = asyncio.Event()
+
+    async def interrupt(a: int):
+        raise KeyboardInterrupt
+
+    async def slow(a: int):
+        try:
+            await asyncio.sleep(5)
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+
+    hook = message_hook()
+    hook.add_impl(interrupt)
+    hook.add_impl(slow)
+
+    with pytest.raises(KeyboardInterrupt):
+        await hook.gather(1)
+
+    assert cancelled.is_set()
+
+
+async def test_async_cancelled_error_propagates():
+    async def cancel(a: int):
+        raise asyncio.CancelledError
+
+    hook = message_hook()
+    hook.add_impl(cancel)
+
+    with pytest.raises(asyncio.CancelledError):
+        await hook.gather(1)
+
+
 async def test_sync_cancelled_error_propagates():
     def cancel(a: int):
         raise asyncio.CancelledError
@@ -214,6 +263,72 @@ async def test_timeout_applies_to_all_entrypoints(entry: str):
 
     with pytest.raises(asyncio.TimeoutError):
         await getattr(timeout, entry)(1)
+
+
+async def test_timeout_applies_to_definition_fallback():
+    @hookdef
+    async def slow_definition(a: int) -> int:
+        await asyncio.sleep(0.5)
+        return a
+
+    timeout = slow_definition.with_timeout(0.05)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await timeout(1)
+
+
+async def test_timeout_logs_unreached_listener_error(caplog):
+    timeout = message_hook.with_timeout(0.05)
+
+    async def hang(a: int):
+        await asyncio.sleep(5)
+
+    async def fail(a: int):
+        raise RuntimeError("unreached failure")
+
+    timeout.add_impl(hang)
+    timeout.add_impl(fail)
+
+    with (
+        caplog.at_level(logging.ERROR, logger="tylisten.hookspec.base"),
+        pytest.raises(asyncio.TimeoutError),
+    ):
+        await timeout.gather(1)
+
+    records = [record for record in caplog.records if record.name == "tylisten.hookspec.base"]
+    assert any(
+        record.exc_info
+        and isinstance(record.exc_info[1], RuntimeError)
+        and "unreached failure" in str(record.exc_info[1])
+        for record in records
+    )
+
+
+async def test_timeout_re_raises_unreached_process_exception():
+    timeout = message_hook.with_timeout(0.05)
+
+    async def hang(a: int):
+        await asyncio.sleep(5)
+
+    async def interrupt(a: int):
+        raise KeyboardInterrupt
+
+    timeout.add_impl(hang)
+    timeout.add_impl(interrupt)
+
+    with pytest.raises(KeyboardInterrupt):
+        await timeout.gather(1)
+
+
+async def test_timeout_definition_process_exception_propagates():
+    @hookdef
+    async def interrupted_definition(a: int) -> int:
+        raise KeyboardInterrupt
+
+    timeout = interrupted_definition.with_timeout(0.05)
+
+    with pytest.raises(KeyboardInterrupt):
+        await timeout(1)
 
 
 async def test_timeout_cancels_all_listeners():
