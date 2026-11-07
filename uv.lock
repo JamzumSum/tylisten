@@ -928,7 +928,7 @@ wheels = [
 
 [[package]]
 name = "tylisten"
-version = "2.4.1.dev1"
+version = "2.5.1"
 source = { editable = "." }
 dependencies = [
     { name = "typing-extensions" },
