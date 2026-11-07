@@ -21,16 +21,16 @@ class StaticHookSpec(t.Generic[_P, _T]):
         self.__def__ = defination
 
     @property
-    def TyInst(self) -> t.Type[HookSpec[_P, _T]]:
+    def TyInst(self) -> type[HookSpec[_P, _T]]:
         """Designed for type checkers. Used to annotate the type of a derived :class:`HookSpec`."""
         return HookSpec
 
     @property
-    def TyTmInst(self) -> t.Type[TimeoutHookSpec[_P, _T]]:
+    def TyTmInst(self) -> type[TimeoutHookSpec[_P, _T]]:
         """Designed for type checkers. Used to annotate the type of a derived :class:`TimeoutHookSpec`."""
         return TimeoutHookSpec
 
-    def __getattribute__(self, __name: str) -> Any:
+    def __getattribute__(self, /, __name: str) -> Any:
         if __name in WRAPPER_ASSIGNMENTS:
             return getattr(self.__def__, __name)
         if __name == "__annotations__":
