@@ -3,6 +3,7 @@ import logging
 import typing as t
 
 T = t.TypeVar("T")
+_Err = tuple[asyncio.Future, BaseException]
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class FutureStore:
         """
         super().__init__()
         self._futs = set()
-        self._errors: list[tuple[asyncio.Future, BaseException]] = []
+        self._errors: list[_Err] = []
         self.loop = loop
         """Event loop for running futures. Must be given when using ``thread_safe`` keyword."""
 
@@ -38,19 +39,9 @@ class FutureStore:
         self._record(fut)
 
     @staticmethod
-    def _raise_or_log(
-        errors: list[tuple[asyncio.Future, BaseException]],
-        *,
-        raise_exceptions: bool,
-    ) -> None:
-        seen: set[asyncio.Future] = set()
-        unique: list[tuple[asyncio.Future, BaseException]] = []
-        for fut, exc in errors:
-            if fut in seen:
-                continue
-            seen.add(fut)
-            unique.append((fut, exc))
-
+    def _raise_or_log(errors: list[_Err], *, raise_exceptions: bool) -> None:
+        # A future may be added more than once; report each failure only once.
+        unique = list(dict(errors).items())
         normal = [(fut, exc) for fut, exc in unique if isinstance(exc, Exception)]
         process_exit = next((exc for _, exc in unique if not isinstance(exc, Exception)), None)
 
@@ -66,12 +57,7 @@ class FutureStore:
         if normal and raise_exceptions:
             raise ExceptionGroup("future(s) failed", [exc for _, exc in normal])
 
-    def _drain(
-        self,
-        collected: list[tuple[asyncio.Future, BaseException]],
-        *,
-        raise_exceptions: bool,
-    ) -> None:
+    def _drain(self, collected: list[_Err], *, raise_exceptions: bool) -> None:
         batch = self._errors
         self._errors = []
         if not batch:
@@ -131,7 +117,7 @@ class FutureStore:
 
     __call__ = add_awaitable
 
-    async def wait(self, wait_new: bool = True, *, raise_exceptions: bool = False):
+    async def wait(self, wait_new: bool = True, *, raise_exceptions: bool = False) -> None:
         """Wait for all tasks in the specific group(s).
 
         :param wait_new: also wait for new-added futures during waiting for existing futures.
@@ -147,13 +133,11 @@ class FutureStore:
 
         .. note:: Even if `wait_new` is False, newly added tasks may still be scheduled.
         """
-        errors: list[tuple[asyncio.Future, BaseException]] = []
+        errors: list[_Err] = []
 
-        while True:
+        while self._futs:
             # Report already-completed failures before blocking on the next batch.
             self._drain(errors, raise_exceptions=raise_exceptions)
-            if not self._futs:
-                break
 
             try:
                 await asyncio.wait(self._futs)
@@ -171,7 +155,7 @@ class FutureStore:
         if raise_exceptions and errors:
             self._raise_or_log(errors, raise_exceptions=True)
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear current future store, cancel all saved tasks, and discard recorded
         failures. If you do not want a task to be cancelled, wrap it in a
         `~asyncio.shield`.
@@ -180,5 +164,5 @@ class FutureStore:
             task.cancel()
         self._errors.clear()
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._futs)

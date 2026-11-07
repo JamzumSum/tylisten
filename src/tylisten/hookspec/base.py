@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import typing as t
+from contextlib import aclosing
 from inspect import isawaitable
 from typing import Self
 
@@ -36,6 +37,37 @@ async def _guard(awaitable: t.Awaitable[_T]) -> _T:
         raise _ProcessExit(exc) from exc
 
 
+def _log_listener_error(impl: TyImpl[_P, _T], exc: BaseException) -> None:
+    """Log a listener failure, unwrapping the internal process-exit carrier."""
+    if isinstance(exc, _ProcessExit):
+        log.exception(
+            "listener %r interrupted by %s",
+            impl,
+            type(exc.exc).__name__,
+            exc_info=exc.exc,
+        )
+    elif isinstance(exc, (KeyboardInterrupt, SystemExit)):
+        log.exception(
+            "listener %r interrupted by %s",
+            impl,
+            type(exc).__name__,
+            exc_info=exc,
+        )
+    else:
+        log.exception("listener %r error", impl, exc_info=exc)
+
+
+def _handle_listener_error(impl: TyImpl[_P, _T], exc: BaseException) -> None:
+    """Log ordinary listener errors; re-raise cancellation and process-level ones."""
+    if isinstance(exc, asyncio.CancelledError):
+        raise exc
+    _log_listener_error(impl, exc)
+    if isinstance(exc, _ProcessExit):
+        raise exc.exc from None
+    if not isinstance(exc, Exception):
+        raise exc
+
+
 async def call_impls(
     impls: t.Iterable[TyImpl[_P, _T]], *args: _P.args, **kwds: _P.kwargs
 ) -> t.AsyncGenerator[_T, t.Any]:
@@ -54,13 +86,8 @@ async def call_impls(
         for impl in impls:
             try:
                 c = impl(*args, **kwds)
-            except asyncio.CancelledError:
-                raise
-            except (KeyboardInterrupt, SystemExit) as exc:
-                log.exception("listener %r interrupted by %s", impl, type(exc).__name__)
-                raise
-            except Exception:
-                log.exception("sync listener %r error", impl)
+            except BaseException as exc:  # noqa: BLE001
+                _handle_listener_error(impl, exc)
                 continue
 
             rfuts.append((impl, asyncio.ensure_future(_guard(c)) if isawaitable(c) else c))
@@ -69,24 +96,9 @@ async def call_impls(
             if asyncio.isfuture(rfut):
                 try:
                     result = await rfut
-                except asyncio.CancelledError:
-                    raise
-                except _ProcessExit as exc:
-                    log.exception(
-                        "listener %r interrupted by %s",
-                        impl,
-                        type(exc.exc).__name__,
-                        exc_info=exc.exc,
-                    )
+                except BaseException as exc:  # noqa: BLE001
                     handled.add(rfut)
-                    raise exc.exc from None
-                except (KeyboardInterrupt, SystemExit) as exc:
-                    log.exception("listener %r interrupted by %s", impl, type(exc).__name__)
-                    handled.add(rfut)
-                    raise
-                except Exception:
-                    log.exception("async listener %r error", impl)
-                    handled.add(rfut)
+                    _handle_listener_error(impl, exc)
                     continue
                 yield result
             else:
@@ -108,25 +120,11 @@ async def call_impls(
                 if fut in handled or isinstance(result, asyncio.CancelledError):
                     continue
                 if isinstance(result, _ProcessExit):
-                    log.exception(
-                        "listener %r interrupted by %s",
-                        impl,
-                        type(result.exc).__name__,
-                        exc_info=result.exc,
-                    )
+                    _log_listener_error(impl, result)
                     if process_exit is None:
                         process_exit = result.exc
-                elif isinstance(result, (KeyboardInterrupt, SystemExit)):
-                    log.exception(
-                        "listener %r interrupted by %s",
-                        impl,
-                        type(result).__name__,
-                        exc_info=result,
-                    )
-                    if process_exit is None:
-                        process_exit = result
                 elif isinstance(result, BaseException):
-                    log.exception("listener %r error", impl, exc_info=result)
+                    _log_listener_error(impl, result)
                     if not isinstance(result, Exception) and process_exit is None:
                         process_exit = result
 
@@ -190,7 +188,7 @@ class HookSpec(t.Generic[_P, _T]):
         self.impls[index_or_impl] = new_impl
 
     async def gather(self, *args: _P.args, **kwds: _P.kwargs) -> list[_T]:
-        """Gather all results, results respsect the corresponding order in :obj:`.impls`.
+        """Gather all results, results respect the corresponding order in :obj:`.impls`.
 
         Listener exceptions are logged and skipped. :exc:`asyncio.CancelledError`,
         :exc:`KeyboardInterrupt` and :exc:`SystemExit` are re-raised, and any still
@@ -198,11 +196,8 @@ class HookSpec(t.Generic[_P, _T]):
 
         :return: All results corresponding the order in :obj:`.impls`
         """
-        agen = call_impls(self.impls, *args, **kwds)
-        try:
+        async with aclosing(call_impls(self.impls, *args, **kwds)) as agen:
             return [i async for i in agen]
-        finally:
-            await agen.aclose()
 
     async def results(self, *args: _P.args, **kwds: _P.kwargs) -> list[_T]:
         """An alias to :meth:`.gather`."""
@@ -237,13 +232,8 @@ class HookSpec(t.Generic[_P, _T]):
                 if isawaitable(c):
                     return await c
                 return c  # type: ignore
-            except asyncio.CancelledError:
-                raise
-            except (KeyboardInterrupt, SystemExit) as exc:
-                log.exception("listener %r interrupted by %s", impl, type(exc).__name__)
-                raise
-            except Exception:
-                log.exception("listener %r error", impl)
+            except BaseException as exc:  # noqa: BLE001
+                _handle_listener_error(impl, exc)
                 continue
 
         raise StopAsyncIteration
