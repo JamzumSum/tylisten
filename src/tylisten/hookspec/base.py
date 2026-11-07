@@ -17,28 +17,55 @@ __all__ = ["HookSpec"]
 async def call_impls(
     impls: t.Iterable[TyImpl[_P, _T]], *args: _P.args, **kwds: _P.kwargs
 ) -> t.AsyncGenerator[_T, t.Any]:
-    """A uniform interface to call a batch of hook implements."""
-    rfuts: list[asyncio.Future[_T] | _T] = []
-    for impl in impls:
-        try:
-            c = impl(*args, **kwds)
-        except BaseException:
-            log.exception("sync listener error!")
-            continue
+    """A uniform interface to call a batch of hook implements.
 
-        rfuts.append(asyncio.ensure_future(c) if isawaitable(c) else c)  # type: ignore
+    Listener exceptions are logged and skipped, so one broken implementation does not
+    stop the others. :exc:`asyncio.CancelledError`, :exc:`KeyboardInterrupt` and
+    :exc:`SystemExit` are always re-raised. The last two are logged with the failing
+    listener, and outstanding listener tasks are cancelled first for a graceful
+    shutdown.
+    """
+    rfuts: list[tuple[TyImpl[_P, _T], asyncio.Future[_T] | _T]] = []
 
-    for rfut in rfuts:
-        if asyncio.isfuture(rfut):
+    try:
+        for impl in impls:
             try:
-                yield await rfut
+                c = impl(*args, **kwds)
             except asyncio.CancelledError:
                 raise
-            except BaseException:
-                log.exception("async listener error!")
+            except (KeyboardInterrupt, SystemExit) as exc:
+                log.exception("listener %r interrupted by %s", impl, type(exc).__name__)
+                raise
+            except Exception:
+                log.exception("sync listener %r error", impl)
                 continue
-        else:
-            yield rfut  # type: ignore
+
+            rfuts.append((impl, asyncio.ensure_future(c) if isawaitable(c) else c))
+
+        for impl, rfut in rfuts:
+            if asyncio.isfuture(rfut):
+                try:
+                    yield await rfut
+                except asyncio.CancelledError:
+                    raise
+                except (KeyboardInterrupt, SystemExit) as exc:
+                    log.exception("listener %r interrupted by %s", impl, type(exc).__name__)
+                    raise
+                except Exception:
+                    log.exception("async listener %r error", impl)
+                    continue
+            else:
+                yield rfut  # type: ignore
+    finally:
+        # The consumer may stop early (for example, on timeout). Never leave
+        # listener tasks running unobserved in the background. Gathering every
+        # future also retrieves exceptions from tasks the consumer never reached.
+        futs = [fut for _, fut in rfuts if asyncio.isfuture(fut)]
+        for fut in futs:
+            if not fut.done():
+                fut.cancel()
+        if futs:
+            await asyncio.gather(*futs, return_exceptions=True)
 
 
 class HookSpec(t.Generic[_P, _T]):
@@ -84,6 +111,7 @@ class HookSpec(t.Generic[_P, _T]):
         :param new_impl: If not given, this method could be used as a decorator.
 
         :raise ValueError: If :obj:`index_or_impl` is a function AND not present in :obj:`.impls`.
+        :raise IndexError: If :obj:`index_or_impl` is an integer out of range.
         """
         if not isinstance(index_or_impl, int):
             index_or_impl = self.impls.index(index_or_impl)
@@ -96,22 +124,40 @@ class HookSpec(t.Generic[_P, _T]):
     async def gather(self, *args: _P.args, **kwds: _P.kwargs) -> list[_T]:
         """Gather all results, results respsect the corresponding order in :obj:`.impls`.
 
+        Listener exceptions are logged and skipped. :exc:`asyncio.CancelledError`,
+        :exc:`KeyboardInterrupt` and :exc:`SystemExit` are re-raised, and any still
+        running listener tasks are cancelled.
+
         :return: All results corresponding the order in :obj:`.impls`
         """
-        return [i async for i in call_impls(self.impls, *args, **kwds)]
+        agen = call_impls(self.impls, *args, **kwds)
+        try:
+            return [i async for i in agen]
+        finally:
+            await agen.aclose()
 
-    results = gather
-    """An alias to :meth:`.gather`."""
+    async def results(self, *args: _P.args, **kwds: _P.kwargs) -> list[_T]:
+        """An alias to :meth:`.gather`."""
+        return await self.gather(*args, **kwds)
 
     async def emit(self, *args: _P.args, **kwds: _P.kwargs) -> None:
-        """Like :meth:`.gather`, but returns `None`."""
+        """Like :meth:`.gather`, but returns `None`.
+
+        Listener exceptions are handled in the same way as :meth:`.gather`.
+        """
         await self.gather(*args, **kwds)
 
     async def first(self, *args: _P.args, **kwds: _P.kwargs) -> _T:
         """
         Get the first valid result.
 
+        Listener exceptions are logged and skipped. :exc:`asyncio.CancelledError`,
+        :exc:`KeyboardInterrupt` and :exc:`SystemExit` are re-raised.
+
         If all results are invalid, raises :exc:`StopAsyncIteration`.
+
+        .. note:: A listener raising :exc:`StopAsyncIteration` is treated as a normal
+            listener error and skipped; it is not confused with "no valid result".
 
         :raise StopAsyncIteration: If all results are invalid.
 
@@ -125,8 +171,11 @@ class HookSpec(t.Generic[_P, _T]):
                 return c  # type: ignore
             except asyncio.CancelledError:
                 raise
-            except BaseException:
-                log.exception("listener error")
+            except (KeyboardInterrupt, SystemExit) as exc:
+                log.exception("listener %r interrupted by %s", impl, type(exc).__name__)
+                raise
+            except Exception:
+                log.exception("listener %r error", impl)
                 continue
 
         raise StopAsyncIteration
@@ -136,13 +185,21 @@ class HookSpec(t.Generic[_P, _T]):
         Get the first valid result.
         If all results are invalid, call the defination and return its result.
 
+        Exceptions raised by the defination propagate unchanged.
+
         :return: The first valid result. If all results are invalid, returns the result of the defination.
         """
         try:
-            return await self.first(*args, **kwds)
+            result = await self.first(*args, **kwds)
         except StopAsyncIteration:
-            c = self.__def__(*args, **kwds)
-            return await c if isawaitable(c) else c  # type: ignore
+            pass
+        else:
+            return result
+
+        # Call the definition outside the ``except`` block so its errors do not
+        # get the internal StopAsyncIteration as ``__context__``.
+        c = self.__def__(*args, **kwds)
+        return await c if isawaitable(c) else c  # type: ignore
 
     @property
     def has_impl(self) -> bool:

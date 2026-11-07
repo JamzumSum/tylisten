@@ -1,7 +1,10 @@
 import asyncio
+import logging
 import typing as t
 
 T = t.TypeVar("T")
+
+log = logging.getLogger(__name__)
 
 
 class FutureStore:
@@ -40,13 +43,24 @@ class FutureStore:
         :param func: the awaitable
         :param thread_safe: whether to use :meth:`asyncio.run_coroutine_threadsafe`. If true, must specify :obj:`.loop`, and `func` must be a coroutine.
         :return: the wrapped future
+        :raise ValueError: If ``thread_safe`` is true but :obj:`.loop` is not set.
+        :raise TypeError: If ``thread_safe`` is true but ``func`` is not a coroutine.
         """
         if thread_safe:
-            assert self.loop, "`thread_safe` mode needs specify loop when creating FutureStore."
-            assert asyncio.iscoroutine(func), "`thread_safe` mode needs coroutine as input."
-            func = asyncio.wrap_future(
-                asyncio.run_coroutine_threadsafe(func, loop=self.loop), loop=self.loop
-            )
+            if self.loop is None:
+                if asyncio.iscoroutine(func):
+                    func.close()
+                raise ValueError(
+                    "`thread_safe` mode needs specify loop when creating FutureStore."
+                )
+            if not asyncio.iscoroutine(func):
+                raise TypeError("`thread_safe` mode needs coroutine as input.")
+            try:
+                cfut = asyncio.run_coroutine_threadsafe(func, loop=self.loop)
+            except BaseException:
+                func.close()
+                raise
+            func = asyncio.wrap_future(cfut, loop=self.loop)
         else:
             func = asyncio.ensure_future(func, loop=self.loop)
         if not func.done():
@@ -56,25 +70,45 @@ class FutureStore:
 
     __call__ = add_awaitable
 
-    async def wait(self, wait_new: bool = True):
+    async def wait(self, wait_new: bool = True, *, raise_exceptions: bool = False):
         """Wait for all tasks in the specific group(s).
 
         :param wait_new: also wait for new-added futures during waiting for existing futures.
+        :param raise_exceptions: if true, raise an :exc:`ExceptionGroup` if any waited
+            task failed. Otherwise task failures are retrieved and logged.
+        :raise ExceptionGroup: If ``raise_exceptions`` is true and any waited task failed.
 
         .. note:: Even if `wait_new` is False, newly added tasks may still be scheduled.
         """
-        if not self._futs:
-            return
-        await asyncio.wait(self._futs)
-        if wait_new and self._futs:
-            # await potential new tasks in this store
-            await self.wait()
+        while self._futs:
+            done, _ = await asyncio.wait(self._futs)
+            errors: list[tuple[asyncio.Future, Exception]] = []
+
+            for fut in done:
+                self._futs.discard(fut)
+                if fut.cancelled():
+                    continue
+
+                exc = fut.exception()
+                if exc is None:
+                    continue
+                if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                    raise exc
+                if isinstance(exc, Exception):
+                    errors.append((fut, exc))
+
+            if errors:
+                if raise_exceptions:
+                    raise ExceptionGroup("future(s) failed", [exc for _, exc in errors])
+                for fut, exc in errors:
+                    log.exception("future %r failed", fut, exc_info=exc)
+
+            if not wait_new:
+                break
 
     def clear(self):
         """Clear current future store, cancel all saved tasks. If you do not want a task to be cancelled,
         wrap it in a `~asyncio.shield`.
-
-        :param exc: if not given, all futures will be cancelled; else they will be set with this exception.
         """
         for task in self._futs:
             task.cancel()
