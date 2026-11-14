@@ -1,13 +1,13 @@
 [project]
 name = "tylisten"
-version = "2.5.1"
+version = "2.5.1.post1"
 description = "A tiny hook specification library with typing support."
 authors = [
     {name = "JamzumSum", email = "22952836+JamzumSum@users.noreply.github.com"}
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11.5"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -32,7 +32,7 @@ test = [
 ]
 dev = ["pre-commit", "ruff"]
 doc = [
-    "Sphinx~=9.0; python_version>='3.11'",
+    "Sphinx~=9.0",
     "sphinx-autodoc-typehints",
     "furo",
     "sphinx-intl",
